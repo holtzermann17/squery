@@ -1,0 +1,88 @@
+<?php
+/*
+ * @file
+ *
+ * This module provides a minimal working example showing how to use
+ * the SPARQL API in practice.
+ *
+ * We will build a web form that lets the user enter an arbitrary
+ * SPARQL endpoint and query, and then see the result. 
+ *
+ */
+
+
+/*
+ * Implements hook_menu.
+ */
+
+function squery_menu(){
+  $items['squery'] = array (
+			    'title' => 'Issue queries and view results to a SPARQL endpoint',
+			    'page callback' => 'drupal_get_form',
+			    'page arguments' => array('squery_form'),
+			    'access callback' => TRUE,
+			    'type' => MENU_NORMAL_ITEM,
+			    );
+  return $items;
+}
+
+function squery_form(){
+  //  $options = array('1' => t('Enabled'), '0' => t('Disabled'));
+  $form['endpoint'] = array(
+			     '#type' => 'textfield',
+			     '#title' => t('Endpoint'),
+			     '#size' => 80,
+			     '#maxlength' => 80,
+			     '#description' => t('E.g. http://dbpedia.org/sparql'),
+			     );
+  $form['userquery'] = array(
+			     '#type' => 'textarea',
+			     '#title' => t('Query'),
+			     '#cols' => 80,
+			     '#rows' => 10,
+			     '#description' => t('E.g.
+    PREFIX dbo: &lt;http://dbpedia.org/ontology/&gt;
+    PREFIX foaf: &lt;http://xmlns.com/foaf/0.1/&gt; 
+    PREFIX rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt;
+    PREFIX : &lt;http://dbpedia.org/resource/&gt; 
+
+    SELECT ?name ?birth ?description ?person WHERE {
+	 ?person dbo:birthPlace :Berlin .
+	 ?person &lt;http://purl.org/dc/terms/subject&gt; 
+		 &lt;http://dbpedia.org/resource/Category:German_musicians&gt; .
+	 ?person dbo:birthDate ?birth .
+	 ?person foaf:name ?name .
+	 ?person rdfs:comment ?description .
+	 FILTER (LANG(?description) = \'en\') .
+    }
+    ORDER BY ?name'),
+			     );
+  $form['submit'] = array (
+			   '#type' => 'submit',
+			   '#value' => 'Submit',
+			   );
+  return $form;
+}
+
+/* 
+ * Implements hook_form_validate
+ */
+
+function squery_form_validate($form, &$form_state){
+  if ($form_state['values']['endpoint'] == NULL){
+    form_set_error('endpoint', t('endpoint must be provided.'));
+  }
+}
+
+/* 
+ * Implements hook_form_submit 
+ */
+
+function squery_form_submit($form,&$form_state){
+  $endpoint = sparql_registry_load_by_uri($form_state['values']['endpoint']);
+  $userquery = $form_state['values']['userquery'];
+  $result = sparql_request($userquery, $endpoint);
+  drupal_set_message('<pre>'. print_r($result['result'], true) .'</pre>');  
+}
+
+// EOF
